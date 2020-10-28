@@ -1,5 +1,5 @@
 // Import stylesheets
-import './style.css';
+import "./style.css";
 // Firebase App (the core Firebase SDK) is always required and must be listed first
 import * as firebase from "firebase/app";
 
@@ -7,28 +7,34 @@ import * as firebase from "firebase/app";
 import "firebase/auth";
 import "firebase/firestore";
 
-import * as firebaseui from 'firebaseui';
+import * as firebaseui from "firebaseui";
 
 // Document elements
-const startRsvpButton = document.getElementById('startRsvp');
-const guestbookContainer = document.getElementById('guestbook-container');
+const startRsvpButton = document.getElementById("startRsvp");
+const guestbookContainer = document.getElementById("guestbook-container");
 
-const form = document.getElementById('leave-message');
-const input = document.getElementById('message');
-const guestbook = document.getElementById('guestbook');
-const numberAttending = document.getElementById('number-attending');
-const rsvpYes = document.getElementById('rsvp-yes');
-const rsvpNo = document.getElementById('rsvp-no');
+const form = document.getElementById("leave-message");
+const input = document.getElementById("message");
+const guestbook = document.getElementById("guestbook");
+const numberAttending = document.getElementById("number-attending");
+const rsvpYes = document.getElementById("rsvp-yes");
+const rsvpNo = document.getElementById("rsvp-no");
 
 var rsvpListener = null;
 var guestbookListener = null;
 
 async function main() {
-
   // Add Firebase project configuration object here
-  // var firebaseConfig = {};
-
-  // firebase.initializeApp(firebaseConfig);
+  const firebaseConfig = {
+    apiKey: "AIzaSyD3GDxge8SH5bnyn2-eDDbdbbH1uTz3JdM",
+    authDomain: "web-starter-lab-1.firebaseapp.com",
+    databaseURL: "https://web-starter-lab-1.firebaseio.com",
+    projectId: "web-starter-lab-1",
+    storageBucket: "web-starter-lab-1.appspot.com",
+    messagingSenderId: "648723118300",
+    appId: "1:648723118300:web:8c1c1d7d81cb1956e3dc19"
+  };
+  firebase.initializeApp(firebaseConfig);
 
   // FirebaseUI config
   const uiConfig = {
@@ -46,7 +52,93 @@ async function main() {
     }
   };
 
-  // const ui = new firebaseui.auth.AuthUI(firebase.auth());
+  const ui = new firebaseui.auth.AuthUI(firebase.auth());
+  startRsvpButton.addEventListener("click", () => {
+    if (firebase.auth().currentUser) {
+      // User is signed in; allows user to sign out
+      firebase.auth().signOut();
+    } else {
+      // No user is signed in; allows user to sign in
+      ui.start("#firebaseui-auth-container", uiConfig);
+    }
+  });
+
+  // Listen to the current Auth state
+  firebase.auth().onAuthStateChanged(user => {
+    if (user) {
+      startRsvpButton.textContent = "LOGOUT";
+      // Show guestbook to logged-in users
+      guestbookContainer.style.display = "block";
+      subscribeGuestbook()
+    } else {
+      startRsvpButton.textContent = "RSVP";
+      // Hide guestbook for non-logged-in users
+      guestbookContainer.style.display = "none";
+      unsubscribeGuestbook()
+    }
+  });
+
+  // Listen to the form submission
+  form.addEventListener("submit", e => {
+    // Prevent the default form redirect
+    e.preventDefault();
+    // Write a new message to the database "guestbook"
+    firebase
+      .firestore()
+      .collection("guestbook")
+      .add({
+        text: input.value,
+        timestamp: Date.now(),
+        name: firebase.auth().currentUser.displayName,
+        userId: firebase.auth().currentUser.uid
+      });
+    // clear message input field
+    input.value = "";
+    // Return false to avoid redirect
+    return false;
+  });
+
+  // // Create query for messages
+  // firebase
+  //   .firestore()
+  //   .collection("guestbook")
+  //   .orderBy("timestamp", "desc")
+  //   .onSnapshot(snaps => {
+  //     // Reset page
+  //     guestbook.innerHTML = "";
+  //     // Loop through documents in database
+  //     snaps.forEach(doc => {
+  //       // Create an HTML entry for each document and add it to the chat
+  //       const entry = document.createElement("p");
+  //       entry.textContent = doc.data().name + ": " + doc.data().text;
+  //       guestbook.appendChild(entry);
+  //     });
+  //   });
+  // Listen to guestbook updates
+  function subscribeGuestbook() {
+    // Create query for messages
+    guestbookListener = firebase
+      .firestore()
+      .collection("guestbook")
+      .orderBy("timestamp", "desc")
+      .onSnapshot(snaps => {
+        // Reset page
+        guestbook.innerHTML = "";
+        // Loop through documents in database
+        snaps.forEach(doc => {
+          // Create an HTML entry for each document and add it   to the chat
+          const entry = document.createElement("p");
+          entry.textContent = doc.data().name + ": " + doc.data().text;
+          guestbook.appendChild(entry);
+        });
+      });
+    // Unsubscribe from guestbook updates
+    function unsubscribeGuestbook() {
+      if (guestbookListener != null) {
+        guestbookListener();
+        guestbookListener = null;
+      }
+    }
+  }
 }
 main();
-
